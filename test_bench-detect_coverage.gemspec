@@ -15,5 +15,7 @@ Gem::Specification.new do |s|
 
   s.bindir = 'script'
 
-  s.add_dependency 'test_bench', '>= 1.2.0.0'
+  s.add_runtime_dependency 'test_bench'
+
+  s.add_development_dependency 'test_bench-isolated'
 end

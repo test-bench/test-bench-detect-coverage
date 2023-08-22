@@ -1,8 +1,9 @@
 #!/bin/sh
 
-ruby \
-  --disable-gems \
-  --disable-frozen-string-literal \
-  -r./test/test_init.rb \
-  -e 'TestBench::CLI.()' \
-  $@
+set -eu -o pipefail
+
+if [ -x test-setup.sh ]; then
+  ./test-setup.sh
+fi
+
+ruby test/automated.rb

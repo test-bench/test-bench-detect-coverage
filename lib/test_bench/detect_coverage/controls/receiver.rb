@@ -82,11 +82,11 @@ module TestBench
 
           module Gem
             def self.example
-              ::TestBench::Defaults
+              ::TestBench
             end
 
             def self.method_id
-              :abort_on_error
+              :session
             end
           end
         end

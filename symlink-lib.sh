@@ -1,3 +1,3 @@
 source ./library-symlinks.sh
 
-symlink_lib 'trace_project' 'test_bench'
+symlink_lib 'detect_coverage' 'test_bench'

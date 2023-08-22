@@ -1,47 +1,49 @@
 module TestBench
   class DetectCoverage
-    attr_reader :paths
-    attr_reader :run_arguments
+    def run
+      @run ||= Run::Substitute.build
+    end
+    attr_writer :run
 
-    def initialize(paths, run_arguments)
-      @paths = paths
-      @run_arguments = run_arguments
+    attr_reader :path
+
+    def initialize(path)
+      @path = path
     end
 
-    def self.build(path, *additional_paths, **run_arguments)
-      paths = [path, *additional_paths]
+    def self.build(path, session: nil, directory: nil, exclude: nil)
+      session ||= Session.build
 
-      new(paths, run_arguments)
+      if not directory.nil?
+        path = ::File.join(directory, path)
+      end
+
+      instance = new(path)
+      Run.configure(instance, session:, exclude:)
+      instance
     end
 
-    def self.call(path, *additional_paths, **run_arguments, &block)
-      instance = build(path, *additional_paths, **run_arguments)
-      instance.(&block)
+    def self.call(path, *additional_paths, **, &)
+      instance = build(path, *additional_paths, **)
+      instance.(&)
     end
 
     def call(&block)
       reader, writer = IO.pipe
 
+      record_file = RecordFile.new
+      run.telemetry.register(record_file)
+
       child_process = fork do
         reader.close
 
-        output = Output.new
-
-        session = TestBench::Session.build(output:)
-
-        TestBench::Run.(session: session, **run_arguments) do |run|
-          actuator = proc {
-            paths.each do |path|
-              run.path(path)
-            end
-          }
-
-          Trace.(actuator) do |method_specifier|
+        run.! do
+          Trace.(->{ run << path }) do |method_specifier|
             if method_specifier.start_with?(TestBench::DetectCoverage.name)
               next
             end
 
-            test_file = output.current_test_file
+            test_file = record_file.current_test_file
 
             text = [
               method_specifier,
@@ -79,13 +81,16 @@ module TestBench
       def method = method_specifier
     end
 
-    class Output
-      include TestBench::Fixture::Output
+    class RecordFile
+      include TestBench::Telemetry::Sink::Handler
+      include TestBench::Run::Events
 
       attr_accessor :current_test_file
 
-      def enter_file(path)
-        self.current_test_file = path
+      handle FileStarted do |file_started|
+        file = file_started.file
+
+        self.current_test_file = file
       end
     end
   end
